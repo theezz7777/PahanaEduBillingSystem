@@ -6,6 +6,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class CustomerDAO {
 
     // Add new customer
@@ -83,6 +84,38 @@ public class CustomerDAO {
 
         return customers;
     }
+
+
+
+// Add this method to CustomerDAO class
+
+    public Customer getCustomerByAccountNumber(String accountNumber) {
+        Customer customer = null;
+        String sql = "SELECT * FROM customers WHERE account_number = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, accountNumber);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    customer = new Customer();
+                    customer.setAccountNumber(rs.getString("account_number"));
+                    customer.setName(rs.getString("name"));
+                    customer.setAddress(rs.getString("address"));
+                    customer.setTelephone(rs.getString("telephone"));
+                    customer.setUnitsConsumed(rs.getInt("units_consumed"));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return customer;
+    }
+
 
     // Update customer
     public boolean updateCustomer(Customer customer) {

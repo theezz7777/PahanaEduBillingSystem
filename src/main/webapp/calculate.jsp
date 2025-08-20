@@ -1,497 +1,321 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.util.List" %>
-<%@ page import="com.pahanaedu.model.Customer" %>
-<%@ page import="com.pahanaedu.model.Item" %>
-<%@ page session="true" %>
-<%
-    // Check if user is logged in
-    if (session == null || session.getAttribute("username") == null) {
-        response.sendRedirect("login.jsp");
-        return;
-    }
-
-    List<Customer> customers = (List<Customer>) request.getAttribute("customers");
-    List<Item> items = (List<Item>) request.getAttribute("items");
-%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="java.util.*, java.math.BigDecimal" %>
+<%@ page import="com.pahanaedu.model.*, com.pahanaedu.dao.*, com.pahanaedu.util.*" %>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculate Bill - Pahana Edu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-        }
-        .navigation {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .navigation a {
-            color: #007bff;
-            text-decoration: none;
-            margin: 0 10px;
-            padding: 5px 10px;
-            border: 1px solid #007bff;
-            border-radius: 3px;
-        }
-        .navigation a:hover {
-            background-color: #007bff;
-            color: white;
-        }
-        .bill-methods {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .method-card {
-            flex: 1;
-            padding: 20px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .method-card:hover {
-            border-color: #007bff;
-            background-color: #f8f9fa;
-        }
-        .method-card.active {
-            border-color: #007bff;
-            background-color: #e3f2fd;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        input[type="text"], input[type="number"], select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        .customer-info {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        .items-section {
-            display: none;
-        }
-        .item-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-        }
-        .item-select {
-            flex: 2;
-        }
-        .quantity-input {
-            flex: 1;
-        }
-        .item-price {
-            flex: 1;
-            font-weight: bold;
-            color: #28a745;
-        }
-        .remove-item {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        .add-item-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        .bill-summary {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .total-row {
-            font-weight: bold;
-            font-size: 18px;
-            border-top: 2px solid #007bff;
-            padding-top: 10px;
-        }
-        .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-right: 10px;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-        }
-        .btn-secondary:hover {
-            background-color: #545b62;
-        }
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-        }
-        .alert-success {
-            color: #155724;
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-        }
-        .alert-danger {
-            color: #721c24;
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-        }
-        .required {
-            color: red;
-        }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .item-card { transition: all 0.3s ease; }
+        .item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .bill-summary { background: #f8f9fa; border: 1px solid #dee2e6; }
+        .total-row { font-size: 1.2em; font-weight: bold; }
+        .discount-badge { background: #28a745; }
+        .error-msg { color: #dc3545; font-size: 0.875em; }
     </style>
 </head>
-<body>
-<div class="container">
-    <div class="navigation">
-        <a href="dashboard.jsp">Dashboard</a>
-        <a href="BillingServlet?action=list">View Bills</a>
-        <a href="CustomerServlet?action=list">Customers</a>
-        <a href="ItemServlet?action=list">Items</a>
-        <a href="logout">Logout</a>
-    </div>
-
-    <div class="header">
-        <h2>Calculate & Create Bill</h2>
-        <p>Choose billing method and create a new bill</p>
-    </div>
-
-    <!-- Display messages -->
-    <% if (request.getAttribute("success") != null) { %>
-    <div class="alert alert-success">
-        <%= request.getAttribute("success") %>
-    </div>
-    <% } %>
-
-    <% if (request.getAttribute("error") != null) { %>
-    <div class="alert alert-danger">
-        <%= request.getAttribute("error") %>
-    </div>
-    <% } %>
-
-    <!-- Billing Method Selection -->
-    <div class="bill-methods">
-        <div class="method-card active" id="simple-method" onclick="selectMethod('simple')">
-            <h4>Simple Billing</h4>
-            <p>Bill based on units consumed</p>
-        </div>
-        <div class="method-card" id="item-method" onclick="selectMethod('items')">
-            <h4>Item-based Billing</h4>
-            <p>Bill based on purchased items</p>
-        </div>
-    </div>
-
-    <!-- Customer Selection -->
-    <div class="form-group">
-        <label for="accountNumber">Select Customer <span class="required">*</span></label>
-        <select id="accountNumber" name="accountNumber" onchange="loadCustomerInfo()" required>
-            <option value="">-- Select Customer --</option>
-            <% if (customers != null) {
-                for (Customer customer : customers) { %>
-            <option value="<%= customer.getAccountNumber() %>"
-                    data-name="<%= customer.getName() %>"
-                    data-address="<%= customer.getAddress() != null ? customer.getAddress() : "" %>"
-                    data-phone="<%= customer.getTelephone() != null ? customer.getTelephone() : "" %>">
-                <%= customer.getAccountNumber() %> - <%= customer.getName() %>
-            </option>
-            <% } } %>
-        </select>
-    </div>
-
-    <!-- Customer Information Display -->
-    <div class="customer-info" id="customer-info">
-        <h4>Customer Information</h4>
-        <div><strong>Name:</strong> <span id="customer-name"></span></div>
-        <div><strong>Address:</strong> <span id="customer-address"></span></div>
-        <div><strong>Phone:</strong> <span id="customer-phone"></span></div>
-    </div>
-
-    <!-- Simple Billing Form -->
-    <form id="simple-form" method="post" action="BillingServlet">
-        <input type="hidden" name="action" value="create">
-        <input type="hidden" id="simple-account" name="accountNumber">
-
-        <div class="form-group">
-            <label for="units">Units Consumed <span class="required">*</span></label>
-            <input type="number" id="units" name="units" min="1" required onchange="calculateSimpleTotal()">
-        </div>
-
-        <div class="form-group">
-            <label for="unitPrice">Unit Price (LKR) <span class="required">*</span></label>
-            <input type="number" id="unitPrice" name="unitPrice" step="0.01" min="0.01" required onchange="calculateSimpleTotal()">
-        </div>
-
-        <div class="bill-summary">
-            <div class="summary-row total-row">
-                <span>Total Amount:</span>
-                <span id="simple-total">LKR 0.00</span>
-            </div>
-        </div>
-
-        <div class="form-group" style="margin-top: 20px;">
-            <button type="submit" class="btn">Create Bill</button>
-            <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
-        </div>
-    </form>
-
-    <!-- Item-based Billing Form -->
-    <form id="items-form" method="post" action="BillingServlet" style="display: none;">
-        <input type="hidden" name="action" value="createWithItems">
-        <input type="hidden" id="items-account" name="accountNumber">
-
-        <div class="items-section" id="items-section">
-            <h4>Select Items</h4>
-            <button type="button" class="add-item-btn" onclick="addItemRow()">Add Item</button>
-
-            <div id="item-rows">
-                <!-- Item rows will be added dynamically -->
-            </div>
-
-            <div class="bill-summary">
-                <div class="summary-row">
-                    <span>Total Items:</span>
-                    <span id="total-items">0</span>
+<body class="bg-light">
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Customer Selection & Items -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-calculator me-2"></i>Calculate Bill</h4>
                 </div>
-                <div class="summary-row">
-                    <span>Total Quantity:</span>
-                    <span id="total-quantity">0</span>
-                </div>
-                <div class="summary-row total-row">
-                    <span>Total Amount:</span>
-                    <span id="items-total">LKR 0.00</span>
+                <div class="card-body">
+                    <!-- Customer Selection -->
+                    <form id="billForm" method="post" action="">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="customerSelect" class="form-label">Select Customer</label>
+                                <select id="customerSelect" name="accountNumber" class="form-select" required>
+                                    <option value="">Choose a customer...</option>
+                                    <%
+                                        CustomerDAO customerDAO = new CustomerDAO();
+                                        List<Customer> customers = customerDAO.getAllCustomers();
+                                        for (Customer customer : customers) {
+                                    %>
+                                    <option value="<%= customer.getAccountNumber() %>"
+                                            <% if (request.getParameter("accountNumber") != null &&
+                                                    request.getParameter("accountNumber").equals(customer.getAccountNumber())) { %>
+                                            selected
+                                            <% } %>>
+                                        <%= customer.getAccountNumber() %> - <%= customer.getName() %>
+                                    </option>
+                                    <% } %>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Bill Date</label>
+                                <input type="date" class="form-control" value="<%= new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) %>" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Available Items -->
+                        <h5 class="mb-3">Available Items</h5>
+                        <div class="row" id="itemsContainer">
+                            <%
+                                ItemDAO itemDAO = new ItemDAO();
+                                List<Item> items = itemDAO.getAllItems();
+                                for (Item item : items) {
+                            %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card item-card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><%= item.getName() %></h6>
+                                        <p class="card-text text-muted small"><%= item.getDescription() %></p>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-success fw-bold">Rs. <%= String.format("%.2f", item.getPrice()) %></span>
+                                            <small class="text-muted">Stock: <%= item.getStock() %></small>
+                                        </div>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">Qty</span>
+                                            <input type="number"
+                                                   class="form-control quantity-input"
+                                                   name="quantity_<%= item.getItemId() %>"
+                                                   min="0"
+                                                   max="<%= item.getStock() %>"
+                                                   value="0"
+                                                   data-item-id="<%= item.getItemId() %>"
+                                                   data-price="<%= item.getPrice() %>"
+                                                   data-name="<%= item.getName() %>"
+                                                   data-stock="<%= item.getStock() %>"
+                                                   onchange="updateBill()">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addToCart(<%= item.getItemId() %>)">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div class="error-msg" id="error_<%= item.getItemId() %>"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </form>
                 </div>
             </div>
+        </div>
 
-            <div class="form-group" style="margin-top: 20px;">
-                <button type="submit" class="btn">Create Bill</button>
-                <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+        <!-- Bill Summary -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Bill Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div id="billItems">
+                        <p class="text-muted text-center">No items selected</p>
+                    </div>
+
+                    <hr>
+
+                    <div class="bill-summary p-3 rounded">
+                        <div class="row">
+                            <div class="col">Subtotal:</div>
+                            <div class="col text-end" id="subtotal">Rs. 0.00</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                Discount:
+                                <span class="badge discount-badge" id="discountBadge">0%</span>
+                            </div>
+                            <div class="col text-end" id="discount">Rs. 0.00</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Tax (15%):</div>
+                            <div class="col text-end" id="tax">Rs. 0.00</div>
+                        </div>
+                        <hr>
+                        <div class="row total-row text-primary">
+                            <div class="col">Total:</div>
+                            <div class="col text-end" id="finalTotal">Rs. 0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-primary" onclick="generateBill()" id="generateBillBtn" disabled>
+                            <i class="fas fa-file-invoice me-2"></i>Generate Bill
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearBill()">
+                            <i class="fas fa-trash me-2"></i>Clear All
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </form>
+    </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let currentMethod = 'simple';
-    let itemRowCounter = 0;
+    let billItems = [];
 
-    // Available items data
-    const items = [
-        <% if (items != null) {
-            for (int i = 0; i < items.size(); i++) {
-                Item item = items.get(i);
-                if (i > 0) out.print(",");
-        %>
-        {
-            id: <%= item.getItemId() %>,
-            name: "<%= item.getName().replace("\"", "\\\"") %>",
-            price: <%= item.getPriceAsDouble() %>,
-            stock: <%= item.getStock() %>
-        }
-        <% } } %>
-    ];
+    function addToCart(itemId) {
+        const quantityInput = document.querySelector(`input[data-item-id="${itemId}"]`);
+        const currentQty = parseInt(quantityInput.value) || 0;
+        const maxStock = parseInt(quantityInput.getAttribute('max'));
 
-    function selectMethod(method) {
-        currentMethod = method;
-
-        // Update UI
-        document.querySelectorAll('.method-card').forEach(card => card.classList.remove('active'));
-        document.getElementById(method + '-method').classList.add('active');
-
-        // Show/hide forms
-        if (method === 'simple') {
-            document.getElementById('simple-form').style.display = 'block';
-            document.getElementById('items-form').style.display = 'none';
-        } else {
-            document.getElementById('simple-form').style.display = 'none';
-            document.getElementById('items-form').style.display = 'block';
-            document.getElementById('items-section').style.display = 'block';
+        if (currentQty < maxStock) {
+            quantityInput.value = currentQty + 1;
+            updateBill();
         }
     }
 
-    function loadCustomerInfo() {
-        const select = document.getElementById('accountNumber');
-        const selectedOption = select.options[select.selectedIndex];
+    function updateBill() {
+        billItems = [];
+        const quantityInputs = document.querySelectorAll('.quantity-input');
+        const billItemsContainer = document.getElementById('billItems');
+        let billItemsHtml = '';
 
-        if (selectedOption.value) {
-            // Show customer info
-            document.getElementById('customer-info').style.display = 'block';
-            document.getElementById('customer-name').textContent = selectedOption.dataset.name || '';
-            document.getElementById('customer-address').textContent = selectedOption.dataset.address || '';
-            document.getElementById('customer-phone').textContent = selectedOption.dataset.phone || '';
+        quantityInputs.forEach(input => {
+            const quantity = parseInt(input.value) || 0;
+            const itemId = input.getAttribute('data-item-id');
+            const price = parseFloat(input.getAttribute('data-price'));
+            const name = input.getAttribute('data-name');
+            const stock = parseInt(input.getAttribute('data-stock'));
+            const errorDiv = document.getElementById(`error_${itemId}`);
 
-            // Update hidden fields
-            document.getElementById('simple-account').value = selectedOption.value;
-            document.getElementById('items-account').value = selectedOption.value;
-        } else {
-            document.getElementById('customer-info').style.display = 'none';
-        }
-    }
+            // Clear previous error
+            errorDiv.textContent = '';
 
-    function calculateSimpleTotal() {
-        const units = parseFloat(document.getElementById('units').value) || 0;
-        const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
-        const total = units * unitPrice;
+            // Validate stock
+            if (quantity > stock) {
+                errorDiv.textContent = `Only ${stock} items available`;
+                input.value = stock;
+                return;
+            }
 
-        document.getElementById('simple-total').textContent = 'LKR ' + total.toFixed(2);
-    }
+            if (quantity > 0) {
+                const total = quantity * price;
+                billItems.push({
+                    itemId: itemId,
+                    name: name,
+                    quantity: quantity,
+                    unitPrice: price,
+                    totalPrice: total
+                });
 
-    function addItemRow() {
-        itemRowCounter++;
-        const itemsContainer = document.getElementById('item-rows');
-
-        const itemRow = document.createElement('div');
-        itemRow.className = 'item-row';
-        itemRow.id = 'item-row-' + itemRowCounter;
-
-        itemRow.innerHTML = `
-                <div class="item-select">
-                    <select name="itemId" onchange="updateItemPrice(${itemRowCounter})" required>
-                        <option value="">-- Select Item --</option>
-                        ${items.map(item =>
-                            `<option value="${item.id}" data-price="${item.price}" data-stock="${item.stock}">
-                                ${item.name} (Stock: ${item.stock})
-                            </option>`
-                        ).join('')}
-                    </select>
-                </div>
-                <div class="quantity-input">
-                    <input type="number" name="quantity" min="1" placeholder="Qty" onchange="calculateItemsTotal()" required>
-                </div>
-                <div class="item-price" id="price-${itemRowCounter}">LKR 0.00</div>
-                <button type="button" class="remove-item" onclick="removeItemRow(${itemRowCounter})">Remove</button>
-            `;
-
-        itemsContainer.appendChild(itemRow);
-    }
-
-    function removeItemRow(rowId) {
-        const row = document.getElementById('item-row-' + rowId);
-        if (row) {
-            row.remove();
-            calculateItemsTotal();
-        }
-    }
-
-    function updateItemPrice(rowId) {
-        const row = document.getElementById('item-row-' + rowId);
-        const select = row.querySelector('select[name="itemId"]');
-        const priceDiv = document.getElementById('price-' + rowId);
-
-        if (select.value) {
-            const selectedOption = select.options[select.selectedIndex];
-            const price = parseFloat(selectedOption.dataset.price) || 0;
-            priceDiv.textContent = 'LKR ' + price.toFixed(2);
-        } else {
-            priceDiv.textContent = 'LKR 0.00';
-        }
-
-        calculateItemsTotal();
-    }
-
-    function calculateItemsTotal() {
-        let totalAmount = 0;
-        let totalQuantity = 0;
-        let totalItems = 0;
-
-        document.querySelectorAll('.item-row').forEach(row => {
-            const select = row.querySelector('select[name="itemId"]');
-            const quantityInput = row.querySelector('input[name="quantity"]');
-
-            if (select.value && quantityInput.value) {
-                const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
-                const quantity = parseInt(quantityInput.value) || 0;
-
-                totalAmount += price * quantity;
-                totalQuantity += quantity;
-                totalItems++;
+                billItemsHtml += `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <small class="fw-bold">${name}</small><br>
+                                <small class="text-muted">${quantity} × Rs. ${price.toFixed(2)}</small>
+                            </div>
+                            <div class="text-end">
+                                <strong>Rs. ${total.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    `;
             }
         });
 
-        document.getElementById('total-items').textContent = totalItems;
-        document.getElementById('total-quantity').textContent = totalQuantity;
-        document.getElementById('items-total').textContent = 'LKR ' + totalAmount.toFixed(2);
-    }
-
-    function resetForm() {
-        if (currentMethod === 'simple') {
-            document.getElementById('simple-form').reset();
-            document.getElementById('simple-total').textContent = 'LKR 0.00';
-        } else {
-            document.getElementById('items-form').reset();
-            document.getElementById('item-rows').innerHTML = '';
-            itemRowCounter = 0;
-            calculateItemsTotal();
+        if (billItemsHtml === '') {
+            billItemsHtml = '<p class="text-muted text-center">No items selected</p>';
         }
 
-        // Reset customer selection
-        document.getElementById('accountNumber').value = '';
-        document.getElementById('customer-info').style.display = 'none';
-        document.getElementById('simple-account').value = '';
-        document.getElementById('items-account').value = '';
+        billItemsContainer.innerHTML = billItemsHtml;
+        calculateTotals();
     }
 
-    // Initialize with one item row for item-based billing
-    window.onload = function() {
-        if (items.length > 0) {
-            addItemRow();
+    function calculateTotals() {
+        let subtotal = 0;
+
+        billItems.forEach(item => {
+            subtotal += item.totalPrice;
+        });
+
+        // Calculate discount
+        let discountRate = 0;
+        let discountPercent = '0%';
+        if (subtotal >= 10000) {
+            discountRate = 0.10;
+            discountPercent = '10%';
+        } else if (subtotal >= 5000) {
+            discountRate = 0.05;
+            discountPercent = '5%';
         }
-    };
+
+        const discount = subtotal * discountRate;
+        const taxableAmount = subtotal - discount;
+        const tax = taxableAmount * 0.15;
+        const finalTotal = taxableAmount + tax;
+
+        // Update display
+        document.getElementById('subtotal').textContent = `Rs. ${subtotal.toFixed(2)}`;
+        document.getElementById('discount').textContent = `Rs. ${discount.toFixed(2)}`;
+        document.getElementById('tax').textContent = `Rs. ${tax.toFixed(2)}`;
+        document.getElementById('finalTotal').textContent = `Rs. ${finalTotal.toFixed(2)}`;
+        document.getElementById('discountBadge').textContent = discountPercent;
+
+        // Enable/disable generate bill button
+        const generateBtn = document.getElementById('generateBillBtn');
+        const customerSelect = document.getElementById('customerSelect');
+        generateBtn.disabled = billItems.length === 0 || !customerSelect.value;
+    }
+
+    function clearBill() {
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.value = 0;
+        });
+        document.querySelectorAll('.error-msg').forEach(div => {
+            div.textContent = '';
+        });
+        billItems = [];
+        updateBill();
+    }
+
+    function generateBill() {
+        const customerSelect = document.getElementById('customerSelect');
+        if (!customerSelect.value) {
+            alert('Please select a customer');
+            return;
+        }
+
+        if (billItems.length === 0) {
+            alert('Please select at least one item');
+            return;
+        }
+
+        // Prepare data for bill generation
+        const billData = {
+            accountNumber: customerSelect.value,
+            items: billItems
+        };
+
+        // Send to servlet for processing
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'BillingServlet';
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'generateBill';
+        form.appendChild(actionInput);
+
+        const dataInput = document.createElement('input');
+        dataInput.type = 'hidden';
+        dataInput.name = 'billData';
+        dataInput.value = JSON.stringify(billData);
+        form.appendChild(dataInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Update bill when customer changes
+    document.getElementById('customerSelect').addEventListener('change', function() {
+        calculateTotals();
+    });
+
+    // Initialize
+    updateBill();
 </script>
 </body>
 </html>

@@ -384,7 +384,7 @@ public class BillingServlet extends HttpServlet {
             request.getRequestDispatcher("calculate.jsp").forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Error loading form dataaaaaaaaaaaaaaaaaaaaa: " + e.getMessage());
+            request.setAttribute("error", "Error loading form data: " + e.getMessage());
             request.getRequestDispatcher("calculate.jsp").forward(request, response);
         }
     }

@@ -127,7 +127,7 @@
         <div class="form-group">
             <label for="accountNumber">Account Number</label>
             <input type="text" id="accountNumber" name="accountNumber"
-                   value="<%= customer.getAccountNumber() %>" readonly>
+                   value="<%= customer.getAccountNumber() %>" required>
         </div>
 
         <div class="form-group">

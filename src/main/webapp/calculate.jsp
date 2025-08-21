@@ -1,321 +1,359 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="java.util.*, java.math.BigDecimal" %>
-<%@ page import="com.pahanaedu.model.*, com.pahanaedu.dao.*, com.pahanaedu.util.*" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, java.text.DecimalFormat" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculate Bill - Pahana Edu</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Bill Calculator - Pahana Edu</title>
     <style>
-        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .item-card { transition: all 0.3s ease; }
-        .item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .bill-summary { background: #f8f9fa; border: 1px solid #dee2e6; }
-        .total-row { font-size: 1.2em; font-weight: bold; }
-        .discount-badge { background: #28a745; }
-        .error-msg { color: #dc3545; font-size: 0.875em; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .bill-summary {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .item-row {
+            background-color: #fff;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
-<body class="bg-light">
-<div class="container-fluid mt-4">
-    <div class="row">
-        <!-- Customer Selection & Items -->
-        <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h4 class="mb-0"><i class="fas fa-calculator me-2"></i>Calculate Bill</h4>
-                </div>
-                <div class="card-body">
-                    <!-- Customer Selection -->
-                    <form id="billForm" method="post" action="">
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="customerSelect" class="form-label">Select Customer</label>
-                                <select id="customerSelect" name="accountNumber" class="form-select" required>
-                                    <option value="">Choose a customer...</option>
-                                    <%
-                                        CustomerDAO customerDAO = new CustomerDAO();
-                                        List<Customer> customers = customerDAO.getAllCustomers();
-                                        for (Customer customer : customers) {
-                                    %>
-                                    <option value="<%= customer.getAccountNumber() %>"
-                                            <% if (request.getParameter("accountNumber") != null &&
-                                                    request.getParameter("accountNumber").equals(customer.getAccountNumber())) { %>
-                                            selected
-                                            <% } %>>
-                                        <%= customer.getAccountNumber() %> - <%= customer.getName() %>
-                                    </option>
-                                    <% } %>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Bill Date</label>
-                                <input type="date" class="form-control" value="<%= new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) %>" readonly>
-                            </div>
-                        </div>
+<body>
+<div class="container">
+    <h1>Bill Calculator</h1>
 
-                        <!-- Available Items -->
-                        <h5 class="mb-3">Available Items</h5>
-                        <div class="row" id="itemsContainer">
-                            <%
-                                ItemDAO itemDAO = new ItemDAO();
-                                List<Item> items = itemDAO.getAllItems();
-                                for (Item item : items) {
-                            %>
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card item-card h-100">
-                                    <div class="card-body">
-                                        <h6 class="card-title"><%= item.getName() %></h6>
-                                        <p class="card-text text-muted small"><%= item.getDescription() %></p>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="text-success fw-bold">Rs. <%= String.format("%.2f", item.getPrice()) %></span>
-                                            <small class="text-muted">Stock: <%= item.getStock() %></small>
-                                        </div>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">Qty</span>
-                                            <input type="number"
-                                                   class="form-control quantity-input"
-                                                   name="quantity_<%= item.getItemId() %>"
-                                                   min="0"
-                                                   max="<%= item.getStock() %>"
-                                                   value="0"
-                                                   data-item-id="<%= item.getItemId() %>"
-                                                   data-price="<%= item.getPrice() %>"
-                                                   data-name="<%= item.getName() %>"
-                                                   data-stock="<%= item.getStock() %>"
-                                                   onchange="updateBill()">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addToCart(<%= item.getItemId() %>)">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                        <div class="error-msg" id="error_<%= item.getItemId() %>"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <% } %>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <%
+        String dbURL = "jdbc:mysql://localhost:3306/pahana_edu";
+        String dbUser = "root";
+        String dbPassword = "root";
 
-        <!-- Bill Summary -->
-        <div class="col-lg-4">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Bill Summary</h5>
-                </div>
-                <div class="card-body">
-                    <div id="billItems">
-                        <p class="text-muted text-center">No items selected</p>
-                    </div>
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
 
-                    <hr>
+        String action = request.getParameter("action");
+        String message = "";
+        String messageType = "";
 
-                    <div class="bill-summary p-3 rounded">
-                        <div class="row">
-                            <div class="col">Subtotal:</div>
-                            <div class="col text-end" id="subtotal">Rs. 0.00</div>
-                        </div>
-                        <div class="row">
-                            <div class="col">
-                                Discount:
-                                <span class="badge discount-badge" id="discountBadge">0%</span>
-                            </div>
-                            <div class="col text-end" id="discount">Rs. 0.00</div>
-                        </div>
-                        <div class="row">
-                            <div class="col">Tax (15%):</div>
-                            <div class="col text-end" id="tax">Rs. 0.00</div>
-                        </div>
-                        <hr>
-                        <div class="row total-row text-primary">
-                            <div class="col">Total:</div>
-                            <div class="col text-end" id="finalTotal">Rs. 0.00</div>
-                        </div>
-                    </div>
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(dbURL, dbUser, dbPassword);
 
-                    <div class="d-grid gap-2 mt-3">
-                        <button type="button" class="btn btn-primary" onclick="generateBill()" id="generateBillBtn" disabled>
-                            <i class="fas fa-file-invoice me-2"></i>Generate Bill
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearBill()">
-                            <i class="fas fa-trash me-2"></i>Clear All
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+            // Handle bill calculation and saving
+            if ("calculate".equals(action)) {
+                String accountNumber = request.getParameter("customer");
+                String[] itemIds = request.getParameterValues("itemId");
+                String[] quantities = request.getParameterValues("quantity");
+
+                if (accountNumber != null && itemIds != null && quantities != null) {
+                    double totalAmount = 0.0;
+
+                    // Insert into bills table
+                    String billSql = "INSERT INTO bills (account_number, units, unit_price, total_amount) VALUES (?, ?, ?, ?)";
+                    pstmt = conn.prepareStatement(billSql, Statement.RETURN_GENERATED_KEYS);
+                    pstmt.setString(1, accountNumber);
+                    pstmt.setInt(2, 1); // Default units
+                    pstmt.setDouble(3, 0.0); // Will be calculated
+                    pstmt.setDouble(4, 0.0); // Will be updated
+                    pstmt.executeUpdate();
+
+                    ResultSet generatedKeys = pstmt.getGeneratedKeys();
+                    int billId = 0;
+                    if (generatedKeys.next()) {
+                        billId = generatedKeys.getInt(1);
+                    }
+
+                    // Insert bill items and calculate total
+                    String billItemSql = "INSERT INTO bill_items (bill_id, item_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)";
+                    PreparedStatement billItemStmt = conn.prepareStatement(billItemSql);
+
+                    for (int i = 0; i < itemIds.length; i++) {
+                        if (itemIds[i] != null && !itemIds[i].isEmpty() && quantities[i] != null && !quantities[i].isEmpty()) {
+                            int itemId = Integer.parseInt(itemIds[i]);
+                            int quantity = Integer.parseInt(quantities[i]);
+
+                            // Get item price
+                            String itemSql = "SELECT price FROM items WHERE item_id = ?";
+                            PreparedStatement itemStmt = conn.prepareStatement(itemSql);
+                            itemStmt.setInt(1, itemId);
+                            ResultSet itemRs = itemStmt.executeQuery();
+
+                            if (itemRs.next()) {
+                                double unitPrice = itemRs.getDouble("price");
+                                double totalPrice = unitPrice * quantity;
+                                totalAmount += totalPrice;
+
+                                billItemStmt.setInt(1, billId);
+                                billItemStmt.setInt(2, itemId);
+                                billItemStmt.setInt(3, quantity);
+                                billItemStmt.setDouble(4, unitPrice);
+                                billItemStmt.setDouble(5, totalPrice);
+                                billItemStmt.executeUpdate();
+
+                                // Update item stock
+                                String updateStockSql = "UPDATE items SET stock = stock - ? WHERE item_id = ?";
+                                PreparedStatement stockStmt = conn.prepareStatement(updateStockSql);
+                                stockStmt.setInt(1, quantity);
+                                stockStmt.setInt(2, itemId);
+                                stockStmt.executeUpdate();
+                                stockStmt.close();
+                            }
+                            itemStmt.close();
+                        }
+                    }
+
+                    // Update total amount in bills table
+                    String updateBillSql = "UPDATE bills SET total_amount = ? WHERE bill_id = ?";
+                    PreparedStatement updateStmt = conn.prepareStatement(updateBillSql);
+                    updateStmt.setDouble(1, totalAmount);
+                    updateStmt.setInt(2, billId);
+                    updateStmt.executeUpdate();
+                    updateStmt.close();
+
+                    billItemStmt.close();
+                    message = "Bill calculated and saved successfully! Bill ID: " + billId + " | Total Amount: LKR " + String.format("%.2f", totalAmount);
+                    messageType = "success";
+                }
+            }
+
+        } catch (Exception e) {
+            message = "Error: " + e.getMessage();
+            messageType = "error";
+        }
+    %>
+
+    <% if (!message.isEmpty()) { %>
+    <div class="<%= messageType %>">
+        <%= message %>
     </div>
+    <% } %>
+
+    <form method="post" action="calculate.jsp">
+        <input type="hidden" name="action" value="calculate">
+
+        <div class="form-group">
+            <label for="customer">Select Customer:</label>
+            <select name="customer" id="customer" required>
+                <option value="">-- Select Customer --</option>
+                <%
+                    try {
+                        if (conn == null) {
+                            Class.forName("com.mysql.cj.jdbc.Driver");
+                            conn = DriverManager.getConnection(dbURL, dbUser, dbPassword);
+                        }
+
+                        String customerSql = "SELECT account_number, name FROM customers ORDER BY name";
+                        pstmt = conn.prepareStatement(customerSql);
+                        rs = pstmt.executeQuery();
+
+                        while (rs.next()) {
+                            String accountNumber = rs.getString("account_number");
+                            String customerName = rs.getString("name");
+                %>
+                <option value="<%= accountNumber %>"><%= accountNumber %> - <%= customerName %></option>
+                <%
+                        }
+                    } catch (Exception e) {
+                        out.println("<option>Error loading customers</option>");
+                    }
+                %>
+            </select>
+        </div>
+
+        <h3>Select Items:</h3>
+        <div id="itemsContainer">
+            <%
+                try {
+                    String itemSql = "SELECT item_id, name, price, stock FROM items WHERE stock > 0 ORDER BY name";
+                    pstmt = conn.prepareStatement(itemSql);
+                    rs = pstmt.executeQuery();
+
+                    while (rs.next()) {
+                        int itemId = rs.getInt("item_id");
+                        String itemName = rs.getString("name");
+                        double price = rs.getDouble("price");
+                        int stock = rs.getInt("stock");
+            %>
+            <div class="item-row">
+                <div>
+                    <strong><%= itemName %></strong><br>
+                    <small>Price: LKR <%= String.format("%.2f", price) %> | Stock: <%= stock %></small>
+                </div>
+                <div>
+                    <input type="hidden" name="itemId" value="<%= itemId %>">
+                    <label>Quantity:</label>
+                    <input type="number" name="quantity" min="0" max="<%= stock %>" value="0"
+                           style="width: 80px; margin-left: 10px;"
+                           onchange="calculatePreview()">
+                </div>
+            </div>
+            <%
+                    }
+                } catch (Exception e) {
+                    out.println("<div class='error'>Error loading items: " + e.getMessage() + "</div>");
+                }
+            %>
+        </div>
+
+        <div class="bill-summary">
+            <h3>Bill Preview</h3>
+            <div id="billPreview">
+                <p>Select items and quantities to see bill preview</p>
+            </div>
+            <div class="total">
+                Total Amount: LKR <span id="totalAmount">0.00</span>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="btn btn-success">Calculate & Save Bill</button>
+            <button type="button" class="btn" onclick="window.location.href='dashboard.jsp'">Back to Dashboard</button>
+        </div>
+    </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let billItems = [];
+    function calculatePreview() {
+        let total = 0;
+        let billItems = [];
+        let quantityInputs = document.querySelectorAll('input[name="quantity"]');
+        let itemIds = document.querySelectorAll('input[name="itemId"]');
 
-    function addToCart(itemId) {
-        const quantityInput = document.querySelector(`input[data-item-id="${itemId}"]`);
-        const currentQty = parseInt(quantityInput.value) || 0;
-        const maxStock = parseInt(quantityInput.getAttribute('max'));
-
-        if (currentQty < maxStock) {
-            quantityInput.value = currentQty + 1;
-            updateBill();
-        }
-    }
-
-    function updateBill() {
-        billItems = [];
-        const quantityInputs = document.querySelectorAll('.quantity-input');
-        const billItemsContainer = document.getElementById('billItems');
-        let billItemsHtml = '';
-
-        quantityInputs.forEach(input => {
-            const quantity = parseInt(input.value) || 0;
-            const itemId = input.getAttribute('data-item-id');
-            const price = parseFloat(input.getAttribute('data-price'));
-            const name = input.getAttribute('data-name');
-            const stock = parseInt(input.getAttribute('data-stock'));
-            const errorDiv = document.getElementById(`error_${itemId}`);
-
-            // Clear previous error
-            errorDiv.textContent = '';
-
-            // Validate stock
-            if (quantity > stock) {
-                errorDiv.textContent = `Only ${stock} items available`;
-                input.value = stock;
-                return;
-            }
-
+        for (let i = 0; i < quantityInputs.length; i++) {
+            let quantity = parseInt(quantityInputs[i].value) || 0;
             if (quantity > 0) {
-                const total = quantity * price;
+                let itemRow = quantityInputs[i].closest('.item-row');
+                let itemName = itemRow.querySelector('strong').textContent;
+                let priceText = itemRow.querySelector('small').textContent;
+                let price = parseFloat(priceText.match(/Price: LKR ([\d.]+)/)[1]);
+                let itemTotal = price * quantity;
+                total += itemTotal;
+
                 billItems.push({
-                    itemId: itemId,
-                    name: name,
+                    name: itemName,
                     quantity: quantity,
-                    unitPrice: price,
-                    totalPrice: total
+                    price: price,
+                    total: itemTotal
                 });
-
-                billItemsHtml += `
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                <small class="fw-bold">${name}</small><br>
-                                <small class="text-muted">${quantity} × Rs. ${price.toFixed(2)}</small>
-                            </div>
-                            <div class="text-end">
-                                <strong>Rs. ${total.toFixed(2)}</strong>
-                            </div>
-                        </div>
-                    `;
             }
-        });
-
-        if (billItemsHtml === '') {
-            billItemsHtml = '<p class="text-muted text-center">No items selected</p>';
         }
 
-        billItemsContainer.innerHTML = billItemsHtml;
-        calculateTotals();
-    }
+        let previewDiv = document.getElementById('billPreview');
+        if (billItems.length > 0) {
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="border-bottom: 1px solid #ddd;"><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>';
 
-    function calculateTotals() {
-        let subtotal = 0;
+            billItems.forEach(item => {
+                html += '<tr style="border-bottom: 1px solid #eee;">';
+                html += '<td>' + item.name + '</td>';
+                html += '<td>' + item.quantity + '</td>';
+                html += '<td>LKR ' + item.price.toFixed(2) + '</td>';
+                html += '<td>LKR ' + item.total.toFixed(2) + '</td>';
+                html += '</tr>';
+            });
 
-        billItems.forEach(item => {
-            subtotal += item.totalPrice;
-        });
-
-        // Calculate discount
-        let discountRate = 0;
-        let discountPercent = '0%';
-        if (subtotal >= 10000) {
-            discountRate = 0.10;
-            discountPercent = '10%';
-        } else if (subtotal >= 5000) {
-            discountRate = 0.05;
-            discountPercent = '5%';
+            html += '</table>';
+            previewDiv.innerHTML = html;
+        } else {
+            previewDiv.innerHTML = '<p>Select items and quantities to see bill preview</p>';
         }
 
-        const discount = subtotal * discountRate;
-        const taxableAmount = subtotal - discount;
-        const tax = taxableAmount * 0.15;
-        const finalTotal = taxableAmount + tax;
-
-        // Update display
-        document.getElementById('subtotal').textContent = `Rs. ${subtotal.toFixed(2)}`;
-        document.getElementById('discount').textContent = `Rs. ${discount.toFixed(2)}`;
-        document.getElementById('tax').textContent = `Rs. ${tax.toFixed(2)}`;
-        document.getElementById('finalTotal').textContent = `Rs. ${finalTotal.toFixed(2)}`;
-        document.getElementById('discountBadge').textContent = discountPercent;
-
-        // Enable/disable generate bill button
-        const generateBtn = document.getElementById('generateBillBtn');
-        const customerSelect = document.getElementById('customerSelect');
-        generateBtn.disabled = billItems.length === 0 || !customerSelect.value;
+        document.getElementById('totalAmount').textContent = total.toFixed(2);
     }
 
-    function clearBill() {
-        document.querySelectorAll('.quantity-input').forEach(input => {
-            input.value = 0;
-        });
-        document.querySelectorAll('.error-msg').forEach(div => {
-            div.textContent = '';
-        });
-        billItems = [];
-        updateBill();
-    }
-
-    function generateBill() {
-        const customerSelect = document.getElementById('customerSelect');
-        if (!customerSelect.value) {
-            alert('Please select a customer');
-            return;
-        }
-
-        if (billItems.length === 0) {
-            alert('Please select at least one item');
-            return;
-        }
-
-        // Prepare data for bill generation
-        const billData = {
-            accountNumber: customerSelect.value,
-            items: billItems
-        };
-
-        // Send to servlet for processing
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'BillingServlet';
-
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'generateBill';
-        form.appendChild(actionInput);
-
-        const dataInput = document.createElement('input');
-        dataInput.type = 'hidden';
-        dataInput.name = 'billData';
-        dataInput.value = JSON.stringify(billData);
-        form.appendChild(dataInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    // Update bill when customer changes
-    document.getElementById('customerSelect').addEventListener('change', function() {
-        calculateTotals();
-    });
-
-    // Initialize
-    updateBill();
+    // Initialize preview on page load
+    document.addEventListener('DOMContentLoaded', calculatePreview);
 </script>
 </body>
 </html>
+
+<%
+    try {
+        if (rs != null) rs.close();
+        if (pstmt != null) pstmt.close();
+        if (conn != null) conn.close();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+%>
